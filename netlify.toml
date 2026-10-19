@@ -1,0 +1,37 @@
+# ==============================================================================
+# GLOBAL DIGITAL MONUMENT — NETLIFY DEPLOYMENT CONFIGURATION
+# Framework: Next.js 16 (App Router + Turbopack)
+# ==============================================================================
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS = "--legacy-peer-deps"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Global Security Headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(self)"
+
+# Edge Caching for Public Contributions API
+[[headers]]
+  for = "/api/contributions"
+  [headers.values]
+    Cache-Control = "public, s-maxage=15, stale-while-revalidate=45"
+
+# Real-Time SSE Headers
+[[headers]]
+  for = "/api/realtime/stream"
+  [headers.values]
+    Cache-Control = "no-cache, no-transform"
+    Connection = "keep-alive"

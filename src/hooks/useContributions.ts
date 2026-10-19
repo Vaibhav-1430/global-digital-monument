@@ -93,18 +93,21 @@ export function useContributions(): UseContributionsResult {
     }
   }, []);
 
-  // Initial load and Realtime Server-Sent Events subscription
+  // Initial load, Server-Sent Events subscription, and serverless polling fallback
   useEffect(() => {
     // 1. Initial fetch from API
     refreshContributions();
 
-    // 2. Real-time subscription via Server-Sent Events
+    // 2. Real-time subscription via Server-Sent Events with error throttling
     let eventSource: EventSource | null = null;
+    let consecutiveErrors = 0;
+
     try {
       eventSource = new EventSource('/api/realtime/stream');
 
       eventSource.addEventListener('new_light', (event) => {
         try {
+          consecutiveErrors = 0;
           const newMarker: LightMarkerData = JSON.parse(event.data);
           addConfirmedMarker(newMarker);
         } catch (err) {
@@ -113,15 +116,43 @@ export function useContributions(): UseContributionsResult {
       });
 
       eventSource.onerror = () => {
-        // Silent recovery: connection retries automatically
+        consecutiveErrors += 1;
+        // In serverless environments (Netlify), close SSE after 3 consecutive failures
+        // to avoid infinite reconnect loops, relying on the fallback poll below.
+        if (consecutiveErrors >= 3 && eventSource) {
+          eventSource.close();
+          eventSource = null;
+        }
       };
     } catch {
       // EventSource unavailable in non-browser environment
     }
 
+    // 3. Fallback polling for serverless environments (e.g. Netlify)
+    // Periodic check every 60s when the document is active and visible
+    const pollInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        refreshContributions();
+      }
+    }, 60000);
+
+    // 4. Tab visibility change listener: immediately fetch fresh contributions when user returns
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshContributions();
+      }
+    };
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
     return () => {
       if (eventSource) {
         eventSource.close();
+      }
+      clearInterval(pollInterval);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
       }
     };
   }, [refreshContributions, addConfirmedMarker]);

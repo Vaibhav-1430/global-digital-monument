@@ -32,16 +32,23 @@ export function verifyRazorpayWebhook(
     const payload = JSON.parse(rawBody);
     const eventType = payload.event;
     const paymentEntity = payload.payload?.payment?.entity;
-    const orderId = paymentEntity?.order_id || payload.payload?.order?.entity?.id;
-    const eventId = payload.event_id || payload.id || paymentEntity?.id || (orderId ? `rzp-${orderId}` : `rzp-event-${Date.now()}`);
-    const currency = (paymentEntity?.currency || 'INR').toUpperCase();
+    const orderEntity = payload.payload?.order?.entity;
+    const orderId = paymentEntity?.order_id || orderEntity?.id;
+    const eventId =
+      payload.event_id ||
+      payload.id ||
+      paymentEntity?.id ||
+      orderEntity?.id ||
+      (orderId ? `rzp-${orderId}` : `rzp-event-${Date.now()}`);
+    const rawAmount = paymentEntity?.amount ?? orderEntity?.amount;
+    const currency = (paymentEntity?.currency || orderEntity?.currency || 'INR').toUpperCase();
 
     return {
       isValid: true,
       eventId,
       paymentReference: orderId,
       eventType,
-      amount: paymentEntity?.amount ? paymentEntity.amount / 100 : undefined,
+      amount: rawAmount !== undefined ? rawAmount / 100 : undefined,
       currency,
     };
   } catch (err: any) {
