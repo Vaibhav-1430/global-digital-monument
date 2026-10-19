@@ -1,0 +1,135 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --space-bg: #030407;
+    --space-card: #080D18;
+    --text-primary: #F5F7FA;
+    --text-muted: #8993A7;
+    --golden-light: #FFC857;
+    --atmospheric-blue: #7DD3FC;
+    --border-subtle: rgba(255, 255, 255, 0.09);
+    --border-highlight: rgba(255, 200, 87, 0.35);
+  }
+
+  body {
+    background-color: var(--space-bg);
+    color: var(--text-primary);
+    overflow-x: hidden;
+    user-select: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Cesium container reset */
+.cesium-widget canvas {
+  width: 100% !important;
+  height: 100% !important;
+  touch-action: none;
+}
+
+.cesium-viewer-bottom {
+  display: none !important;
+}
+
+/* Glassmorphism utility */
+.glass-panel {
+  background: rgba(8, 13, 24, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-panel-gold {
+  background: rgba(14, 18, 30, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 200, 87, 0.25);
+  box-shadow: 0 0 35px -10px rgba(255, 200, 87, 0.15);
+}
+
+.glass-modal {
+  background: rgba(6, 10, 20, 0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Golden button glow */
+.btn-gold {
+  background: linear-gradient(135deg, #FFE29A 0%, #FFC857 50%, #E5A82E 100%);
+  color: #030407;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 25px rgba(255, 200, 87, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.btn-gold:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 35px rgba(255, 200, 87, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.btn-gold:active {
+  transform: translateY(1px);
+}
+
+/* Atmospheric glow pulse */
+@keyframes atmosphericPulse {
+  0%, 100% {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.02);
+  }
+}
+
+.animate-atmosphere {
+  animation: atmosphericPulse 8s ease-in-out infinite;
+}
+
+/* Subtle star twinkle */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* Golden pulse for ignited beacon */
+@keyframes beaconPulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(255, 200, 87, 0.7);
+  }
+  70% {
+    transform: scale(1.6);
+    opacity: 0;
+    box-shadow: 0 0 0 30px rgba(255, 200, 87, 0);
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+}
+
+.beacon-pulse {
+  animation: beaconPulse 2.4s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+}
+
+/* Custom minimal scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(3, 4, 7, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 200, 87, 0.4);
+}
