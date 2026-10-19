@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { X, Sparkles, Heart, Globe2, ShieldCheck, Compass } from 'lucide-react';
+import Link from 'next/link';
+import { X, Sparkles, Heart, Globe2, ShieldCheck, Compass, ArrowRight } from 'lucide-react';
 
 interface AboutOverlayProps {
   isOpen: boolean;
@@ -104,9 +105,29 @@ export default function AboutOverlay({ isOpen, onClose }: AboutOverlayProps) {
             </div>
           </div>
 
+          {/* Trust and Policy Navigation Links */}
+          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.08] flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+            <span className="text-[#8993A7]">Detailed Information:</span>
+            <div className="flex flex-wrap items-center gap-3 text-[11px]">
+              <Link href="/about" onClick={onClose} className="text-[#FFC857] hover:underline flex items-center gap-1 font-semibold">
+                <span>Story & Mission</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+              <Link href="/contribution-policy" onClick={onClose} className="text-[#8993A7] hover:text-[#F5F7FA]">
+                Policy
+              </Link>
+              <Link href="/refund-policy" onClick={onClose} className="text-[#8993A7] hover:text-[#F5F7FA]">
+                Refunds
+              </Link>
+              <Link href="/contact" onClick={onClose} className="text-[#8993A7] hover:text-[#F5F7FA]">
+                Contact
+              </Link>
+            </div>
+          </div>
+
           <div className="pt-2 flex items-center justify-between border-t border-white/[0.06]">
             <span className="text-[10px] font-mono text-[#8993A7] uppercase tracking-wider">
-              Phase 1 — Interactive Earth Prototype
+              Phase 6C — Verified Sandbox Flow
             </span>
             <button
               id="btn-return-globe"

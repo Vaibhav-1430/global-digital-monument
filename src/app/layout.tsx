@@ -33,7 +33,7 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${outfit.variable} h-full dark`}>
       <body
         suppressHydrationWarning
-        className="min-h-full bg-[#030407] text-[#F5F7FA] font-sans antialiased overflow-hidden select-none"
+        className="min-h-full bg-[#030407] text-[#F5F7FA] font-sans antialiased"
       >
         {children}
       </body>

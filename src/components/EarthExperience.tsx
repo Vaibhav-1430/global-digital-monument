@@ -11,6 +11,7 @@ import AddYourLightFlow from '@/components/AddYourLightFlow';
 import LightIgnition from '@/components/LightIgnition';
 import LeaderboardOverlay from '@/components/LeaderboardOverlay';
 import AboutOverlay from '@/components/AboutOverlay';
+import SiteFooter from '@/components/SiteFooter';
 import WorldLeaderTakeover from '@/components/WorldLeaderTakeover';
 import { LightMarkerData, IntroPhase, NavigationModal } from '@/types';
 import { useContributions } from '@/hooks/useContributions';
@@ -201,6 +202,11 @@ export default function EarthExperience() {
           onAddLightClick={() => setActiveModal('contribute')}
           totalLights={totalLights}
         />
+      )}
+
+      {/* Cinematic Trust & Legal Footer */}
+      {!selectedMarker && activeModal === 'none' && (
+        <SiteFooter totalLights={totalLights} opacity={uiOpacity} />
       )}
 
       {/* Selected Marker Card (only appears on interaction) */}

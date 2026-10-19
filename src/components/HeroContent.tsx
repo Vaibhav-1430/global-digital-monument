@@ -52,13 +52,8 @@ export default function HeroContent({
         </div>
       </div>
 
-      {/* Subtle, tiny demo contribution count at the bottom */}
-      <div className="pointer-events-auto">
-        <div className="inline-flex items-center gap-2 text-[11px] font-mono text-[#8993A7]/70">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#FFC857]" />
-          <span>{totalLights.toLocaleString()} lights glowing (Demo)</span>
-        </div>
-      </div>
+      {/* Bottom spacer for SiteFooter */}
+      <div className="h-6" />
     </div>
   );
 }

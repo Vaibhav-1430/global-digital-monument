@@ -830,6 +830,30 @@ export default function AddYourLightFlow({
               </div>
             </div>
 
+            {/* Accessible Trust & Payment Support Links */}
+            <div className="flex items-center justify-between text-[11px] font-mono text-[#8993A7] px-1">
+              <span>Need billing assistance?</span>
+              <div className="flex items-center gap-2">
+                <a
+                  href="/contribution-policy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#FFC857] underline transition-colors"
+                >
+                  Contribution Policy
+                </a>
+                <span>•</span>
+                <a
+                  href="/payment-support"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#FFC857] underline transition-colors"
+                >
+                  Payment Support
+                </a>
+              </div>
+            </div>
+
             <div className="pt-2 flex justify-between items-center shrink-0">
               <button
                 type="button"

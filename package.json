@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test test/phase5.test.mjs test/phase6b-e2e-audit.test.mjs test/phase6c-razorpay.test.mjs",
+    "test": "tsx --test test/phase5.test.mjs test/phase6b-e2e-audit.test.mjs test/phase6c-razorpay.test.mjs test/trust-and-legal.test.mjs",
     "test:persistence": "tsx scripts/test-persistence.ts"
   },
   "dependencies": {
