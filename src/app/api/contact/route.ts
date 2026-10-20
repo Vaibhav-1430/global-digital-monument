@@ -1,44 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 
-// In-memory rate limiting tracker (Sliding window: max 5 requests per 15 mins per IP)
-const rateLimitMap = new Map<string, { count: number; expiresAt: number }>();
-
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const windowMs = 15 * 60 * 1000; // 15 minutes
-  const limit = 5;
-
-  const entry = rateLimitMap.get(ip);
-  if (!entry || entry.expiresAt < now) {
-    rateLimitMap.set(ip, { count: 1, expiresAt: now + windowMs });
-    return true;
-  }
-
-  if (entry.count >= limit) {
-    return false;
-  }
-
-  entry.count += 1;
-  return true;
-}
+import { getClientIp, checkRateLimit, getRateLimitHeaders } from '@/lib/security/rateLimiter';
 
 // Simple email regex for validation
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(req: NextRequest) {
   try {
-    const forwarded = req.headers.get('x-forwarded-for');
-    const ip = forwarded ? forwarded.split(',')[0].trim() : '127.0.0.1';
+    const clientIp = getClientIp(req);
 
-    // 1. Rate Limiting Check
-    if (!checkRateLimit(ip)) {
+    // 1. Shared Serverless-Safe Rate Limiting Check (Max 5 inquiries per 15 minutes per IP)
+    const rateLimit = await checkRateLimit(`contact:${clientIp}`, {
+      limit: 5,
+      windowSeconds: 900,
+    });
+
+    if (!rateLimit.allowed) {
       return NextResponse.json(
         {
           success: false,
           error: 'Too many requests. Please wait a few minutes before submitting another message.',
         },
-        { status: 429 }
+        {
+          status: 429,
+          headers: getRateLimitHeaders(rateLimit),
+        }
       );
     }
 
@@ -98,13 +85,13 @@ export async function POST(req: NextRequest) {
 
     // 5. Secure In-Transit Handling
     // Never acts as an open relay. Logs structured inquiry details securely without sensitive keys.
-    console.info(`[Support Inquiry Received] ID: ${referenceId} | Category: ${cleanCategory} | IP: ${ip}`);
+    console.info(`[Support Inquiry Received] ID: ${referenceId} | Category: ${cleanCategory} | IP: ${clientIp}`);
 
     return NextResponse.json({
       success: true,
       referenceId,
       message:
-        'Your message has been received. Our support team will review your inquiry and follow up at your provided email.',
+        'Your message has been received. The project operator will review your inquiry at the owner-provided contact address.',
     });
   } catch (err: any) {
     console.error('Error processing contact inquiry:', err);

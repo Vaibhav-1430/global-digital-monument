@@ -14,6 +14,19 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+# Netlify Deploy Context Isolation:
+# Production: Strictly demo mode to guarantee zero live charges
+[context.production.environment]
+  NEXT_PUBLIC_APP_MODE = "demo"
+
+# Deploy Previews: Activate production code path solely for testing checkout with Razorpay TEST credentials
+[context.deploy-preview.environment]
+  NEXT_PUBLIC_APP_MODE = "production"
+
+# Branch Deploys: Default to demo mode
+[context.branch-deploy.environment]
+  NEXT_PUBLIC_APP_MODE = "demo"
+
 # Global Security Headers
 [[headers]]
   for = "/*"

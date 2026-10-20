@@ -43,15 +43,15 @@ export default function ContactPage() {
             </div>
 
             {businessInfo.isEmailConfigured && businessInfo.supportEmail ? (
-              <div>
+              <div className="space-y-1.5">
                 <a
                   href={`mailto:${businessInfo.supportEmail}`}
-                  className="text-sm font-mono text-[#FFC857] hover:underline break-all"
+                  className="text-sm font-mono text-[#FFC857] hover:underline break-all block"
                 >
                   {businessInfo.supportEmail}
                 </a>
-                <p className="text-xs text-[#8993A7] mt-1">
-                  Click to open your default email client.
+                <p className="text-[11px] text-[#8993A7] leading-relaxed">
+                  Owner-provided contact address. Dedicated response SLAs and inbox monitoring remain unconfirmed pending owner review.
                 </p>
               </div>
             ) : (
@@ -73,23 +73,20 @@ export default function ContactPage() {
             )}
           </div>
 
-          {/* Operating Hours & Timelines */}
+          {/* Operating Availability */}
           <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.08] space-y-3">
             <div className="flex items-center gap-2.5 text-[#7DD3FC]">
               <Clock className="w-4 h-4" />
               <h2 className="text-xs font-mono uppercase tracking-wider font-semibold">
-                Support Hours
+                Inquiry Handling
               </h2>
             </div>
             <div className="text-xs text-[#8993A7] space-y-1.5 leading-relaxed">
               <p>
-                <strong className="text-[#F5F7FA]">Monday – Friday:</strong> 10:00 AM – 6:00 PM IST
+                Inquiries are reviewed on a <strong className="text-[#F5F7FA]">best-effort basis</strong> by the project operator.
               </p>
-              <p>
-                <strong className="text-[#F5F7FA]">Weekend:</strong> Critical payment verification tickets monitored
-              </p>
-              <p className="text-[11px] text-[#8993A7]/70 pt-1 border-t border-white/[0.06]">
-                Typical response window: within 24 to 48 business hours.
+              <p className="text-[11px] text-amber-200/80 pt-1 border-t border-white/[0.06]">
+                Notice: Formal operating hours, weekend monitoring, and response time guarantees are pending owner confirmation prior to commercial launch.
               </p>
             </div>
           </div>
@@ -102,16 +99,25 @@ export default function ContactPage() {
                 Operator Details
               </h2>
             </div>
-            <div className="text-xs text-[#8993A7] space-y-1 leading-relaxed">
-              <p className="text-[#F5F7FA] font-medium">
-                {businessInfo.legalEntityName}
-              </p>
-              <p className="text-[11px]">
-                {businessInfo.businessAddress}
-              </p>
-              <p className="text-[10px] font-mono text-[#8993A7]/60 pt-1">
-                Jurisdiction: {businessInfo.governingJurisdiction}
-              </p>
+            <div className="text-xs text-[#8993A7] space-y-2 leading-relaxed">
+              <div>
+                <span className="text-[10px] uppercase font-mono text-[#8993A7]/70 block">Operator</span>
+                <p className="text-[#F5F7FA] font-medium">
+                  {businessInfo.operatorName} <span className="text-[11px] font-normal text-[#8993A7]">(Individual Project)</span>
+                </p>
+              </div>
+              <div className="pt-1.5 border-t border-white/[0.04]">
+                <span className="text-[10px] uppercase font-mono text-[#8993A7]/70 block">Registered / Business Address</span>
+                <p className="text-[11px] text-amber-200/90">
+                  {businessInfo.isAddressConfigured ? businessInfo.businessAddress : 'Unconfirmed (Pending owner verification prior to commercial launch)'}
+                </p>
+              </div>
+              <div className="pt-1.5 border-t border-white/[0.04]">
+                <span className="text-[10px] uppercase font-mono text-[#8993A7]/70 block">Governing Jurisdiction</span>
+                <p className="text-[10px] font-mono text-amber-200/90">
+                  {businessInfo.isJurisdictionConfigured ? businessInfo.governingJurisdiction : 'Unconfirmed (Pending owner verification prior to commercial launch)'}
+                </p>
+              </div>
             </div>
           </div>
 

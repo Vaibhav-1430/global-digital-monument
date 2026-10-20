@@ -17,6 +17,7 @@ import {
   Globe2
 } from 'lucide-react';
 import { LightMarkerData } from '@/types';
+import { isProductionMode } from '@/config/appMode';
 
 interface AddYourLightFlowProps {
   isOpen: boolean;
@@ -82,6 +83,7 @@ export default function AddYourLightFlow({
   pickedCoordinates,
   onConfirmContribution,
 }: AddYourLightFlowProps) {
+  const isProduction = isProductionMode();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [amount, setAmount] = useState<number>(25);
   const [customAmount, setCustomAmount] = useState<string>('');
@@ -332,10 +334,20 @@ export default function AddYourLightFlow({
           setSubmissionError(`Payment provider '${result.provider}' checkout is not supported in this view.`);
         }
       }
-    } catch {
-      // Safe offline/fallback client creation
+    } catch (err: any) {
+      if (isProductionMode()) {
+        // In production / test checkout mode, network or server failure must NEVER
+        // pretend a payment succeeded or ignite a permanent marker.
+        setSubmissionError(
+          err?.message || 'Unable to connect to contribution service. Please check your network connection and try again.'
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Safe offline/fallback client creation ONLY in intentional demo mode
       const fallbackMarker: LightMarkerData = {
-        id: `light-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        id: `demo-light-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         name: contributorName,
         isAnonymous,
         amount: currentAmount,
@@ -817,18 +829,32 @@ export default function AddYourLightFlow({
               </div>
             )}
 
-            {/* Clear Phase 3 Demonstration Notice */}
-            <div className="p-3.5 rounded-2xl bg-[#FFC857]/10 border border-[#FFC857]/30 flex items-start gap-3 text-xs text-[#FFC857]">
-              <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
-              <div>
-                <span className="font-semibold uppercase tracking-wider block mb-1 font-mono text-[11px]">
-                  DEMO MODE — NO PAYMENT WILL BE CHARGED. THIS CONTRIBUTION IS NOT SAVED PERMANENTLY.
-                </span>
-                <span className="text-[11px] text-[#F5F7FA]/80 leading-relaxed block">
-                  Clicking confirm will ignite a glowing golden beacon on the 3D globe and fly the camera to your location.
-                </span>
+            {/* Clear Mode Disclosure Notice */}
+            {isProduction ? (
+              <div className="p-3.5 rounded-2xl bg-[#7DD3FC]/10 border border-[#7DD3FC]/30 flex items-start gap-3 text-xs text-[#7DD3FC]">
+                <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-semibold uppercase tracking-wider block mb-1 font-mono text-[11px]">
+                    TEST MODE (SANDBOX) — RAZORPAY TEST CHECKOUT ACTIVE
+                  </span>
+                  <span className="text-[11px] text-[#F5F7FA]/80 leading-relaxed block">
+                    A test checkout window will open. No real money will be charged. Use Razorpay test credentials to simulate payment.
+                  </span>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="p-3.5 rounded-2xl bg-[#FFC857]/10 border border-[#FFC857]/30 flex items-start gap-3 text-xs text-[#FFC857]">
+                <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-semibold uppercase tracking-wider block mb-1 font-mono text-[11px]">
+                    DEMO MODE — NO PAYMENT WILL BE CHARGED. THIS CONTRIBUTION IS NOT SAVED PERMANENTLY.
+                  </span>
+                  <span className="text-[11px] text-[#F5F7FA]/80 leading-relaxed block">
+                    Clicking confirm will ignite a glowing golden beacon on the 3D globe and fly the camera to your location.
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Accessible Trust & Payment Support Links */}
             <div className="flex items-center justify-between text-[11px] font-mono text-[#8993A7] px-1">

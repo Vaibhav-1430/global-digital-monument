@@ -70,7 +70,7 @@ export default function AboutOverlay({ isOpen, onClose }: AboutOverlayProps) {
                     Every light has a place.
                   </h4>
                   <p className="text-xs text-[#8993A7] leading-relaxed">
-                    No matter how small or large the gift, every light claims its unique geographic presence in space and time.
+                    No matter how small or large the contribution, every light claims its unique geographic presence in space and time.
                   </p>
                 </div>
               </div>

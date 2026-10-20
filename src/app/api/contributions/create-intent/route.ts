@@ -3,6 +3,11 @@ import { validateContributionInput } from '@/lib/validation/contribution';
 import { createPaymentOrder } from '@/lib/payments/provider';
 import { createPendingContributionRecord } from '@/lib/db/contributions';
 import { isProductionMode } from '@/config/appMode';
+import {
+  checkCommercialLaunchReadiness,
+  isCommercialLaunchRequested,
+} from '@/config/businessInfo';
+import { getClientIp, checkRateLimit, getRateLimitHeaders } from '@/lib/security/rateLimiter';
 
 /**
  * POST /api/contributions/create-intent
@@ -11,6 +16,26 @@ import { isProductionMode } from '@/config/appMode';
  */
 export async function POST(req: NextRequest) {
   try {
+    // 0. Abuse Protection & Serverless-Safe Rate Limiting
+    const clientIp = getClientIp(req);
+    const rateLimit = await checkRateLimit(`intent:${clientIp}`, {
+      limit: 15, // Allow max 15 intent creations per 5 minutes per IP
+      windowSeconds: 300,
+    });
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Too many contribution attempts. Please wait a few minutes before trying again.',
+        },
+        {
+          status: 429,
+          headers: getRateLimitHeaders(rateLimit),
+        }
+      );
+    }
+
     const body = await req.json();
 
     // 1. Server-side validation
@@ -28,21 +53,37 @@ export async function POST(req: NextRequest) {
     // 2. Demo mode handler
     if (!isProduction) {
       const demoId = `demo-light-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-      return NextResponse.json({
-        success: true,
-        isDemo: true,
-        message: 'Contribution intent generated in DEMO mode. No payment will be charged.',
-        contribution: {
-          id: demoId,
-          ...contribution,
-          timestamp: 'Just now',
+      return NextResponse.json(
+        {
+          success: true,
           isDemo: true,
-          createdAt: Date.now(),
+          message: 'Contribution intent generated in DEMO mode. No payment will be charged.',
+          contribution: {
+            id: demoId,
+            ...contribution,
+            timestamp: 'Just now',
+            isDemo: true,
+            createdAt: Date.now(),
+          },
         },
-      });
+        { headers: getRateLimitHeaders(rateLimit) }
+      );
     }
 
-    // 3. Production mode handler — Initialize real checkout with payment provider
+    // 3. Commercial Launch Safety Check & Production handler
+    const commercialReadiness = checkCommercialLaunchReadiness();
+    if (isCommercialLaunchRequested() && !commercialReadiness.isReady) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'Commercial live checkout is disabled pending owner confirmation of mandatory legal and operator identity details.',
+          missingRequirements: commercialReadiness.missingRequirements,
+        },
+        { status: 403, headers: getRateLimitHeaders(rateLimit) }
+      );
+    }
+
     const donorEmail = typeof body.donorEmail === 'string' ? body.donorEmail.trim() : undefined;
     const paymentIntent = await createPaymentOrder(contribution, donorEmail);
 
@@ -74,16 +115,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      isDemo: false,
-      orderId: paymentIntent.orderId,
-      keyId: paymentIntent.keyId,
-      clientSecret: paymentIntent.clientSecret,
-      amount: paymentIntent.amount,
-      currency: paymentIntent.currency,
-      provider: paymentIntent.provider,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        isDemo: false,
+        isCommercialLaunchReady: commercialReadiness.isReady,
+        orderId: paymentIntent.orderId,
+        keyId: paymentIntent.keyId,
+        clientSecret: paymentIntent.clientSecret,
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
+        provider: paymentIntent.provider,
+      },
+      { headers: getRateLimitHeaders(rateLimit) }
+    );
   } catch (err: any) {
     console.error('Error in create-intent route:', err);
     return NextResponse.json(

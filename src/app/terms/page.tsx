@@ -35,7 +35,7 @@ export default function TermsPage() {
           1. Agreement to Terms
         </h2>
         <p>
-          Welcome to Global Digital Monument (&quot;the Platform&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;), operated by {businessInfo.legalEntityName}. By accessing our website, interacting with the 3D Earth experience, or submitting a contribution to place a light marker, you agree to be bound by these Terms of Service (&quot;Terms&quot;) and our <Link href="/privacy" className="text-[#FFC857] underline">Privacy Policy</Link>.
+          Welcome to Global Digital Monument (&quot;the Platform&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;), an individual digital art project operated under the public project name <strong>{businessInfo.operatorName}</strong>. By accessing our website, interacting with the 3D Earth experience, or submitting a contribution to place a virtual light marker, you agree to be bound by these Terms of Service (&quot;Terms&quot;) and our <Link href="/privacy" className="text-[#FFC857] underline">Privacy Policy</Link>.
         </p>
         <p>
           If you do not agree with any portion of these Terms, please refrain from using the Platform or initiating any contributions.
@@ -62,13 +62,13 @@ export default function TermsPage() {
         </p>
         <ul className="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-[#C3C9D5]">
           <li>
-            <strong>Digital Participation Only:</strong> A contribution grants the digital privilege of placing a virtual marker with an optional tribute message on our interactive globe.
+            <strong>Digital Participation Only:</strong> A contribution grants the digital privilege of placing a virtual light marker with an optional tribute message on our interactive globe.
           </li>
           <li>
             <strong>No Physical or Real Property:</strong> Nothing on this Platform conveys real-estate ownership, title, territory, mining rights, or physical property of any kind on Earth.
           </li>
           <li>
-            <strong>Non-Profit Disclaimer:</strong> The Platform is not a registered charity, foundation, or non-profit entity. Contributions are not tax-deductible charitable gifts.
+            <strong>Individual Project &amp; Non-Profit Disclaimer:</strong> The Platform is operated as an individual project and is not a registered corporate entity, commercial foundation, or charity. Contributions are digital participation fees and are not tax-deductible charitable gifts.
           </li>
         </ul>
       </section>
@@ -115,7 +115,7 @@ export default function TermsPage() {
           6. Intellectual Property Rights
         </h2>
         <p>
-          All software code, 3D globe models, custom shaders, UI designs, graphics, audio, brand assets, and trademarks associated with Global Digital Monument are the exclusive property of {businessInfo.legalEntityName} or its licensors.
+          All software code, 3D globe models, custom shaders, UI designs, graphics, audio, brand assets, and trademarks associated with Global Digital Monument are the property of the project operator ({businessInfo.operatorName}) or its licensors.
         </p>
         <p className="text-xs sm:text-sm">
           <strong>License Granted by User:</strong> You retain ownership of your personal dedication text and submitted avatar. However, by submitting content to the monument, you grant us an irrevocable, perpetual, worldwide, royalty-free, transferable license to display, render, reproduce, and archive your dedication and marker as part of the public monument.
@@ -141,7 +141,7 @@ export default function TermsPage() {
           8. Limitation of Liability
         </h2>
         <p className="text-xs sm:text-sm leading-relaxed text-[#8993A7]">
-          To the maximum extent permitted by applicable law, in no event shall {businessInfo.legalEntityName}, its directors, developers, or affiliates be liable for any indirect, incidental, punitive, special, or consequential damages arising from your access to, use of, or inability to access the Platform. Our total aggregate liability for all claims arising under these Terms shall not exceed the amount actually paid by you to the Platform during the twelve (12) months preceding the claim.
+          To the maximum extent permitted by applicable law, in no event shall the project operator ({businessInfo.operatorName}), its developers, or contributors be liable for any indirect, incidental, punitive, special, or consequential damages arising from your access to, use of, or inability to access the Platform. Our total aggregate liability for all claims arising under these Terms shall not exceed the amount actually paid by you to the Platform during the twelve (12) months preceding the claim.
         </p>
       </section>
 
@@ -155,12 +155,23 @@ export default function TermsPage() {
             Owner Review Required
           </span>
         </div>
-        <p className="text-xs sm:text-sm">
-          These Terms and any dispute or claim arising out of or in connection with them shall be governed by and construed in accordance with the laws of{' '}
-          <strong className="text-[#FFC857]">{businessInfo.governingJurisdiction}</strong>, without giving effect to any choice of law or conflict of law principles.
-        </p>
+        {businessInfo.isJurisdictionConfigured ? (
+          <p className="text-xs sm:text-sm">
+            These Terms and any dispute or claim arising out of or in connection with them shall be governed by and construed in accordance with the laws of{' '}
+            <strong className="text-[#FFC857]">{businessInfo.governingJurisdiction}</strong>, without giving effect to any choice of law or conflict of law principles.
+          </p>
+        ) : (
+          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs sm:text-sm space-y-1.5 text-amber-200/90 leading-relaxed">
+            <p>
+              <strong>Governing Law Notice:</strong> Global Digital Monument is an individual-operated project. A formal statutory legal jurisdiction has not yet been confirmed by the owner for commercial operations.
+            </p>
+            <p className="text-[11px] text-amber-300/80">
+              Prior to commercial launch, the site owner must confirm the statutory governing jurisdiction under which these Terms and any financial transactions will be legally enforced.
+            </p>
+          </div>
+        )}
         <p className="text-xs sm:text-sm text-[#8993A7]">
-          Before initiating any formal legal or arbitration proceeding, you agree to attempt to resolve any dispute informally by contacting our customer support team at <Link href="/contact" className="text-[#FFC857] underline">Contact Support</Link>.
+          Before initiating any formal dispute, you agree to attempt to resolve any issue informally by contacting the project operator via <Link href="/contact" className="text-[#FFC857] underline">Contact Support</Link>.
         </p>
       </section>
 

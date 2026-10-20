@@ -33,7 +33,7 @@ export default function PrivacyPolicyPage() {
       {/* Overview */}
       <section className="space-y-3">
         <p>
-          At Global Digital Monument (operated by {businessInfo.legalEntityName}), we believe in transparency, digital dignity, and minimal data collection. This Privacy Policy outlines what information we collect when you visit our website or contribute a light to our shared 3D Earth, how that information is used, and how we protect your personal privacy.
+          At Global Digital Monument (an individual project operated under the public name <strong>{businessInfo.operatorName}</strong>), we believe in transparency, digital dignity, and minimal data collection. This Privacy Policy outlines what information we collect when you visit our website or contribute a light to our shared 3D Earth, how that information is used, and how we protect your personal privacy.
         </p>
       </section>
 
@@ -172,7 +172,7 @@ export default function PrivacyPolicyPage() {
           We apply robust security measures including cryptographic signature validation (HMAC SHA-256 with constant-time equality checks) and PostgreSQL database Row Level Security. However, no internet transmission or electronic storage method can guarantee 100% absolute invulnerability.
         </p>
         <p className="text-xs sm:text-sm text-[#8993A7] leading-relaxed">
-          For any questions or privacy requests regarding your data, please contact our team via <Link href="/contact" className="text-[#FFC857] underline">Contact & Support</Link>.
+          For any questions or privacy requests regarding your data, please contact the project operator via <Link href="/contact" className="text-[#FFC857] underline">Contact & Support</Link> or by email at {businessInfo.supportEmail || 'printkaro.org@gmail.com'}.
         </p>
       </section>
 

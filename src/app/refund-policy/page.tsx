@@ -77,7 +77,7 @@ export default function RefundPolicyPage() {
           If you were inadvertently charged more than once for a single intended contribution due to rapid clicks or connectivity glitches:
         </p>
         <p className="text-xs sm:text-sm">
-          Please notify our support team via <Link href="/contact" className="text-[#FFC857] underline">Contact Support</Link> or <Link href="/payment-support" className="text-[#FFC857] underline">Payment Support</Link>. Provide both Razorpay Payment IDs (e.g. <code className="bg-white/10 px-1 py-0.5 rounded text-white font-mono">pay_...</code>). Once our team verifies the duplicate charge on our gateway dashboard, we will initiate a full reversal for the redundant transaction to your original payment method.
+          Please notify the project operator via <Link href="/contact" className="text-[#FFC857] underline">Contact Support</Link> or <Link href="/payment-support" className="text-[#FFC857] underline">Payment Support</Link>. Provide both Razorpay Payment IDs (e.g. <code className="bg-white/10 px-1 py-0.5 rounded text-white font-mono">pay_...</code>). Once the duplicate charge is verified on the gateway dashboard, a full reversal for the redundant transaction will be initiated back to your original payment method.
         </p>
       </section>
 
@@ -90,7 +90,7 @@ export default function RefundPolicyPage() {
           If funds were successfully deducted from your account but your light did not immediately appear:
         </p>
         <p className="text-xs sm:text-sm">
-          Our backend employs asynchronous payment webhooks. In cases of momentary client disconnects, our server webhook typically verifies and confirms the light within a few minutes. If after 30 minutes your light remains absent, please submit your Payment ID to our support team. We will manually verify your payment and activate your light. If we are unable to locate or place your marker due to a technical defect, you are entitled to a full refund.
+          Our backend employs asynchronous payment webhooks. In cases of momentary client disconnects, our server webhook typically verifies and confirms the light within a few minutes. If after 30 minutes your light remains absent, please submit your Payment ID to the project operator. The transaction will be manually verified and your light activated. If we are unable to place your marker due to a technical defect, you are entitled to a full refund.
         </p>
       </section>
 
@@ -107,19 +107,19 @@ export default function RefundPolicyPage() {
 
         <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-3 text-xs sm:text-sm">
           <p className="text-[#F5F7FA]">
-            <strong>Digital Service Nature:</strong> Contributions on Global Digital Monument provide instant digital services (immediate 3D rendering, persistent marker placement, and leaderboard indexing).
+            <strong>Digital Service Nature:</strong> Contributions on Global Digital Monument provide instant digital services (immediate 3D rendering, persistent marker placement, and leaderboard indexing). Because the digital light is ignited upon confirmation, contributions are generally non-refundable once rendered, except in cases of verified technical delivery failure or duplicate debits.
           </p>
 
           <p>
-            <strong>Standard Refund Consideration Policy (Pending Final Owner Launch Approval):</strong>
+            <strong>Proposed Refund Consideration Framework (Pending Final Owner Launch Confirmation):</strong>
           </p>
 
           <ul className="list-disc pl-5 space-y-1.5 text-[#8993A7]">
             <li>
-              Refund requests submitted within <strong>{businessInfo.refundWindowDays} calendar days</strong> of payment will be reviewed on a case-by-case basis (e.g. accidental submission, proven unauthorized account use, or persistent rendering defects).
+              Refund requests submitted within <strong>{businessInfo.refundWindowDays} calendar days</strong> of payment will be reviewed on a case-by-case basis by the project operator (e.g. accidental submission, proven unauthorized account use, or persistent rendering defects).
             </li>
             <li>
-              Where a refund is approved by the site operator, the corresponding light marker and dedication will be deactivated and removed from the 3D globe and public leaderboard.
+              Where a refund is approved by the project operator, the corresponding light marker and dedication will be deactivated and removed from the 3D globe and public leaderboard.
             </li>
             <li>
               Refunds approved for processing are credited back strictly to the <strong>original payment source</strong> (bank account, UPI, or card) through Razorpay&apos;s settlement channels, typically taking 5 to 7 business days to reflect in your statement.

@@ -38,7 +38,7 @@ export default function AboutPage() {
             Important Platform Disclosure
           </strong>
           <p>
-            Global Digital Monument is an independent digital art project and interactive software experience. It is <strong>NOT</strong> a registered charity, non-profit organization (NGO), or tax-deductible donation platform. Payments represent voluntary digital participation fees for igniting, displaying, and maintaining user lights on the 3D globe. Contributions do <strong>not</strong> qualify for tax deductions under Section 80G of the Indian Income Tax Act, Section 501(c)(3) of the US Internal Revenue Code, or equivalent foreign provisions.
+            Global Digital Monument is an individual-operated digital art project and interactive software experience under the public project name <strong>Immortal</strong>. It is <strong>NOT</strong> a registered charity, company, non-profit organization (NGO), or tax-deductible donation platform. Payments represent voluntary digital fees for igniting, displaying, and maintaining virtual lights on the 3D globe. Contributions do <strong>not</strong> qualify for tax deductions under Section 80G of the Indian Income Tax Act, Section 501(c)(3) of the US Internal Revenue Code, or equivalent foreign provisions.
           </p>
         </div>
       </section>

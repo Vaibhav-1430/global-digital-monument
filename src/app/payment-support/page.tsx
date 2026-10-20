@@ -39,7 +39,7 @@ export default function PaymentSupportPage() {
             Need Immediate Payment Assistance?
           </span>
           <p className="text-xs sm:text-sm text-[#F5F7FA]/90">
-            Submit your Razorpay Payment ID (<code className="bg-black/30 px-1 py-0.5 rounded text-white font-mono">pay_...</code>) directly to our support team for priority verification.
+            Submit your Razorpay Payment ID (<code className="bg-black/30 px-1 py-0.5 rounded text-white font-mono">pay_...</code>) directly through our contact form for priority transaction verification.
           </p>
         </div>
         <Link
@@ -163,10 +163,10 @@ export default function PaymentSupportPage() {
           <span>Dispute Escalation & Statutory Consumer Rights</span>
         </h2>
         <p className="text-xs sm:text-sm text-[#8993A7] leading-relaxed">
-          We are committed to resolving payment concerns fairly and swiftly. Our support team aims to acknowledge inquiries within <strong>24 to 48 business hours</strong>.
+          We are committed to resolving payment concerns fairly and transparently. Inquiries submitted via our contact form or sent to the owner-provided contact address (<strong className="text-white font-mono">{businessInfo.supportEmail || 'printkaro.org@gmail.com'}</strong>) are reviewed on a best-effort basis by the project operator. Guaranteed response times and SLA monitoring remain unconfirmed pending owner review prior to commercial launch.
         </p>
         <p className="text-xs sm:text-sm text-[#8993A7] leading-relaxed">
-          <strong>Non-Exclusion of Statutory Rights:</strong> Our internal support and dispute handling process operates alongside, and does not replace, your statutory consumer rights or the dispute resolution channels provided by your bank, card issuer, or Razorpay. You retain the right to seek chargebacks or dispute remedies through your banking institution in cases of unauthorized transactions.
+          <strong>Non-Exclusion of Statutory Rights:</strong> Our informal dispute assistance operates alongside, and does not replace, your statutory consumer rights or the dispute resolution channels provided by your bank, card issuer, or Razorpay. You retain the right to seek chargebacks or dispute remedies through your banking institution in cases of unauthorized transactions.
         </p>
       </section>
 

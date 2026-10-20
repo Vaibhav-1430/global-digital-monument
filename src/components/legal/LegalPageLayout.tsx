@@ -116,19 +116,16 @@ export default function LegalPageLayout({
 
       {/* Main Content Area */}
       <main className="relative z-10 flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        {/* Development Launch Warning (Visible only in development if required config is missing) */}
-        {!businessInfo.isProduction && (!businessInfo.isEmailConfigured || !businessInfo.isLegalEntityConfigured) && (
-          <div className="mb-6 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 flex items-start gap-3">
+        {/* Pre-Launch / Owner Verification Notice */}
+        {(!businessInfo.isAddressConfigured || !businessInfo.isJurisdictionConfigured || !businessInfo.isEmailMonitoredConfirmed) && (
+          <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 flex items-start gap-3">
             <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-            <div>
-              <span className="font-semibold font-mono uppercase block mb-0.5">
-                Launch Configuration Notice (Development Mode)
+            <div className="space-y-1">
+              <span className="font-semibold font-mono uppercase block text-[11px] tracking-wider">
+                Pre-Launch Notice — Owner Identity &amp; Statutory Disclosures Pending
               </span>
               <p className="text-amber-200/90 text-[11px] leading-relaxed">
-                Owner legal and contact details are currently using fallback defaults. Configure{' '}
-                <code className="text-white bg-black/40 px-1 py-0.5 rounded">NEXT_PUBLIC_SUPPORT_EMAIL</code>{' '}
-                and <code className="text-white bg-black/40 px-1 py-0.5 rounded">NEXT_PUBLIC_LEGAL_ENTITY_NAME</code>{' '}
-                in <code className="text-white bg-black/40 px-1 py-0.5 rounded">.env.local</code> prior to public launch.
+                Global Digital Monument is an individual-operated digital art project under the public name <strong>{businessInfo.operatorName}</strong>. Statutory registered address, governing legal jurisdiction, and monitored support SLAs are unconfirmed and pending owner review prior to commercial launch.
               </p>
             </div>
           </div>
@@ -204,10 +201,10 @@ export default function LegalPageLayout({
 
           <div className="text-[11px] text-[#8993A7]/70 font-mono leading-relaxed space-y-2">
             <p>
-              <strong>Notice:</strong> Global Digital Monument is an independent digital art and interactive web experience. It is not a registered charity, non-profit organization, or tax-deductible donation platform. All digital contributions are subject to our Contribution Policy and Refund Policy.
+              <strong>Notice:</strong> Global Digital Monument is an independent digital art and interactive web experience operated as an individual project under the project name <strong>{businessInfo.operatorName}</strong>. It is not a registered company, charity, non-profit organization, or tax-deductible donation platform. All digital contributions represent voluntary fees to ignite and display a virtual light on the 3D globe and are subject to our Contribution Policy and Refund Policy.
             </p>
             <p>
-              © 2026 {businessInfo.legalEntityName}. All rights reserved. Razorpay is an independent third-party payment processing provider.
+              © 2026 {businessInfo.operatorName} (Individual Project). All rights reserved. Razorpay is an independent third-party payment processing provider.
             </p>
           </div>
         </div>

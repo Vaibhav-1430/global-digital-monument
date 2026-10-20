@@ -1,6 +1,10 @@
 import { PaymentOrderIntent } from './types';
 import { SanitizedContribution } from '../validation/contribution';
 import { isPaymentConfigured } from '@/config/appMode';
+import {
+  assertCommercialLaunchReadiness,
+  isCommercialLaunchRequested,
+} from '@/config/businessInfo';
 
 /**
  * Creates a payment order intent with the configured provider (Razorpay / Stripe).
@@ -32,6 +36,17 @@ export async function createPaymentOrder(
   if (provider === 'razorpay') {
     const keyId = process.env.RAZORPAY_KEY_ID!;
     const keySecret = process.env.RAZORPAY_KEY_SECRET!;
+
+    // Safety guard: Live mode is strictly prohibited in current phase
+    if (keyId.startsWith('rzp_live')) {
+      throw new Error('Razorpay Live Mode is strictly disabled. Only Razorpay Test Mode (rzp_test_*) credentials are permitted.');
+    }
+
+    // Safety guard: Commercial live launch requires owner confirmation of operator and legal identity
+    if (isCommercialLaunchRequested()) {
+      assertCommercialLaunchReadiness();
+    }
+
     const authHeader = `Basic ${Buffer.from(`${keyId}:${keySecret}`).toString('base64')}`;
 
     try {
