@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useId } from 'react';
+import React, { useState, useEffect, useRef, useId, useCallback } from 'react';
 import {
   X,
   Sparkles,
@@ -14,8 +14,13 @@ import {
   ArrowLeft,
   AlertCircle,
   Search,
-  Globe2
+  Globe2,
+  Copy,
+  ExternalLink,
+  QrCode,
+  Clock,
 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { LightMarkerData } from '@/types';
 import { isProductionMode } from '@/config/appMode';
 
@@ -53,27 +58,16 @@ const COUNTRIES_AND_REGIONS = [
   { name: 'New Zealand', region: 'Oceania', lat: -40.9006, lng: 174.8860 },
 ];
 
-/**
- * Dynamically loads the official Razorpay Checkout SDK script if not already present.
- */
-function loadRazorpayScript(): Promise<boolean> {
-  return new Promise((resolve) => {
-    if (typeof window !== 'undefined' && (window as any).Razorpay) {
-      resolve(true);
-      return;
-    }
-    const existing = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
-    if (existing) {
-      resolve(true);
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
+interface UpiOrderDetails {
+  orderId: string;
+  amount: number;
+  currency: string;
+  payeeVpa: string;
+  payeeName: string;
+  upiUri: string;
+  isConfigured: boolean;
+  isDemo: boolean;
+  verificationNotice: string;
 }
 
 export default function AddYourLightFlow({
@@ -81,7 +75,6 @@ export default function AddYourLightFlow({
   onClose,
   onStartPickingOnGlobe,
   pickedCoordinates,
-  onConfirmContribution,
 }: AddYourLightFlowProps) {
   const isProduction = isProductionMode();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -102,8 +95,16 @@ export default function AddYourLightFlow({
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [message, setMessage] = useState('');
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // UPI QR checkout state
+  const [isGeneratingIntent, setIsGeneratingIntent] = useState(false);
+  const [orderData, setOrderData] = useState<UpiOrderDetails | null>(null);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+  const [claimedUtr, setClaimedUtr] = useState('');
+  const [isSubmittingVerification, setIsSubmittingVerification] = useState(false);
+  const [isVerificationSubmitted, setIsVerificationSubmitted] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const modalRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -129,22 +130,22 @@ export default function AddYourLightFlow({
     }
   }, [pickedCoordinates]);
 
-  if (!isOpen) return null;
-
   // Active contribution calculation
   const parsedCustom = parseFloat(customAmount);
   const currentAmount = customAmount ? (isNaN(parsedCustom) ? 0 : parsedCustom) : amount;
-  const isAmountValid = currentAmount > 0 && currentAmount <= 1000000;
+  const isAmountValid = currentAmount >= 10 && currentAmount <= 1000000 && Number.isInteger(currentAmount);
 
   const handleCustomAmountChange = (val: string) => {
     setCustomAmount(val);
     const num = parseFloat(val);
     if (!val) {
       setCustomAmountError(null);
-    } else if (isNaN(num) || num <= 0) {
-      setCustomAmountError('Please enter a valid amount greater than ₹0');
+    } else if (isNaN(num) || num < 10) {
+      setCustomAmountError('Minimum contribution is ₹10');
     } else if (num > 1000000) {
-      setCustomAmountError('Maximum demonstration contribution is ₹10,00,000');
+      setCustomAmountError('Maximum contribution is ₹10,00,000');
+    } else if (!Number.isInteger(num)) {
+      setCustomAmountError('Please enter a whole integer amount in Rupees');
     } else {
       setCustomAmountError(null);
     }
@@ -206,10 +207,13 @@ export default function AddYourLightFlow({
     isApproximate = false;
   }
 
-  const handleComplete = async () => {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
+  // Generates unique server-side UPI QR checkout session
+  const initializeUpiCheckout = useCallback(async () => {
+    setIsGeneratingIntent(true);
     setSubmissionError(null);
+    setOrderData(null);
+    setQrCodeDataUrl(null);
+    setIsVerificationSubmitted(false);
 
     const contributorName = isAnonymous ? 'Anonymous' : (name.trim() || 'A Kind Soul');
     const payload = {
@@ -236,139 +240,97 @@ export default function AddYourLightFlow({
       const result = await res.json();
 
       if (!res.ok || !result.success) {
-        setSubmissionError(result.error || 'Failed to initiate contribution.');
-        setIsSubmitting(false);
+        setSubmissionError(result.error || 'Failed to initialize payment checkout.');
+        setIsGeneratingIntent(false);
         return;
       }
 
-      if (result.isDemo && result.contribution) {
-        // Confirmed demo contribution returned from verified server validation
-        onConfirmContribution(result.contribution);
-        onClose();
-        setTimeout(() => {
-          setStep(1);
-          setIsSubmitting(false);
-        }, 400);
-      } else if (!result.isDemo) {
-        // Non-demo / sandbox mode: launch Razorpay Checkout modal
-        if (result.provider === 'razorpay') {
-          if (!result.keyId || !result.orderId) {
-            setSubmissionError('Server returned an incomplete checkout session. Please try again.');
-            setIsSubmitting(false);
-            return;
-          }
-
-          const scriptLoaded = await loadRazorpayScript();
-          if (!scriptLoaded) {
-            setSubmissionError('Failed to load Razorpay Checkout SDK. Please check your network connection.');
-            setIsSubmitting(false);
-            return;
-          }
-
-          const options = {
-            key: result.keyId,
-            amount: Math.round(result.amount * 100),
-            currency: result.currency || 'INR',
-            name: 'Global Digital Monument',
-            description: payload.message ? `Dedication: ${payload.message.slice(0, 50)}` : 'Leave Your Light on Earth',
-            order_id: result.orderId,
-            prefill: {
-              name: isAnonymous ? 'Anonymous' : (contributorName || 'A Kind Soul'),
-            },
-            theme: {
-              color: '#FFC857',
-            },
-            modal: {
-              ondismiss: () => {
-                setIsSubmitting(false);
-                setSubmissionError('Checkout cancelled. Your light has not been confirmed.');
-              },
-            },
-            handler: async (response: {
-              razorpay_payment_id: string;
-              razorpay_order_id: string;
-              razorpay_signature: string;
-            }) => {
-              try {
-                setIsSubmitting(true);
-                setSubmissionError(null);
-                const verifyRes = await fetch('/api/contributions/verify-checkout', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    orderId: response.razorpay_order_id,
-                    paymentId: response.razorpay_payment_id,
-                    signature: response.razorpay_signature,
-                  }),
-                });
-
-                const verifyData = await verifyRes.json();
-                if (!verifyRes.ok || !verifyData.success || !verifyData.contribution) {
-                  throw new Error(verifyData.error || 'Server payment signature verification failed.');
-                }
-
-                // Authoritatively verified by server!
-                onConfirmContribution(verifyData.contribution);
-                onClose();
-                setTimeout(() => {
-                  setStep(1);
-                  setIsSubmitting(false);
-                }, 400);
-              } catch (verifyErr: any) {
-                setSubmissionError(
-                  verifyErr.message || 'Payment confirmation failed. If debited, your light will appear shortly via webhook.'
-                );
-                setIsSubmitting(false);
-              }
-            },
-          };
-
-          const rzp = new (window as any).Razorpay(options);
-          rzp.on('payment.failed', (failResp: any) => {
-            setIsSubmitting(false);
-            setSubmissionError(failResp.error?.description || 'Payment failed. Please try again.');
-          });
-          rzp.open();
-        } else {
-          setIsSubmitting(false);
-          setSubmissionError(`Payment provider '${result.provider}' checkout is not supported in this view.`);
-        }
-      }
-    } catch (err: any) {
-      if (isProductionMode()) {
-        // In production / test checkout mode, network or server failure must NEVER
-        // pretend a payment succeeded or ignite a permanent marker.
-        setSubmissionError(
-          err?.message || 'Unable to connect to contribution service. Please check your network connection and try again.'
-        );
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Safe offline/fallback client creation ONLY in intentional demo mode
-      const fallbackMarker: LightMarkerData = {
-        id: `demo-light-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-        name: contributorName,
-        isAnonymous,
-        amount: currentAmount,
-        city: locationMode === 'country' ? selectedCountry.region : 'Earth Coordinates',
-        country: locationMode === 'country' ? selectedCountry.name : 'Global',
-        lat: activeLat,
-        lng: activeLng,
-        message: message.trim() || undefined,
-        timestamp: 'Just now',
-        photoUrl: photoPreview || undefined,
-        isDemo: true,
-        isApproximate,
-        createdAt: Date.now(),
+      const upiUri = result.upiUri || '';
+      const orderDetails: UpiOrderDetails = {
+        orderId: result.orderId,
+        amount: result.amount,
+        currency: result.currency || 'INR',
+        payeeVpa: result.payeeVpa || 'demo@upi',
+        payeeName: result.payeeName || 'WorldBeacon Demo',
+        upiUri,
+        isConfigured: Boolean(result.isConfigured),
+        isDemo: Boolean(result.isDemo),
+        verificationNotice:
+          result.verificationNotice ||
+          'Manual verification required. Your light will be activated on the globe after administrative verification.',
       };
-      onConfirmContribution(fallbackMarker);
-      onClose();
-      setTimeout(() => {
-        setStep(1);
-        setIsSubmitting(false);
-      }, 400);
+
+      setOrderData(orderDetails);
+
+      // Generate high-resolution QR code locally
+      if (upiUri) {
+        const qrUrl = await QRCode.toDataURL(upiUri, {
+          width: 240,
+          margin: 1,
+          color: {
+            dark: '#030407',
+            light: '#FFFFFF',
+          },
+        });
+        setQrCodeDataUrl(qrUrl);
+      }
+
+      setStep(4);
+    } catch (err: any) {
+      setSubmissionError(err.message || 'Unable to connect to payment service. Please try again.');
+    } finally {
+      setIsGeneratingIntent(false);
     }
+  }, [
+    isAnonymous,
+    name,
+    currentAmount,
+    message,
+    activeLat,
+    activeLng,
+    isApproximate,
+    locationMode,
+    selectedCountry.region,
+    selectedCountry.name,
+    photoPreview,
+  ]);
+
+  // Visitor submits "I've Paid" with optional UTR
+  const handleSubmitVerification = async () => {
+    if (!orderData || isSubmittingVerification) return;
+    setIsSubmittingVerification(true);
+    setSubmissionError(null);
+
+    try {
+      const res = await fetch('/api/contributions/submit-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: orderData.orderId,
+          transactionRef: claimedUtr.trim() || undefined,
+        }),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        setSubmissionError(result.error || 'Failed to submit verification request.');
+        setIsSubmittingVerification(false);
+        return;
+      }
+
+      setIsVerificationSubmitted(true);
+    } catch (err: any) {
+      setSubmissionError(err.message || 'Error submitting verification. Please check your network.');
+    } finally {
+      setIsSubmittingVerification(false);
+    }
+  };
+
+  const handleCopyText = (text: string, fieldName: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(fieldName);
+    setTimeout(() => setCopiedField(null), 2000);
   };
 
   const filteredCountries = COUNTRIES_AND_REGIONS.filter(
@@ -377,12 +339,14 @@ export default function AddYourLightFlow({
       c.region.toLowerCase().includes(countrySearch.toLowerCase())
   );
 
+  if (!isOpen) return null;
+
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-md animate-in fade-in duration-300"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -399,7 +363,7 @@ export default function AddYourLightFlow({
               Step {step} of 4 — {step === 1 && 'Amount'}
               {step === 2 && 'Location'}
               {step === 3 && 'Personalize'}
-              {step === 4 && 'Review'}
+              {step === 4 && (isVerificationSubmitted ? 'Status' : 'UPI QR Checkout')}
             </span>
           </div>
 
@@ -421,7 +385,7 @@ export default function AddYourLightFlow({
                 ADD YOUR LIGHT
               </h2>
               <p className="text-xs sm:text-sm text-[#8993A7] font-light">
-                Every light tells a story.
+                Every light tells a story. Choose your contribution.
               </p>
             </div>
 
@@ -450,7 +414,7 @@ export default function AddYourLightFlow({
                 <input
                   type="number"
                   placeholder="Custom ₹"
-                  min="1"
+                  min="10"
                   max="1000000"
                   value={customAmount}
                   onChange={(e) => handleCustomAmountChange(e.target.value)}
@@ -473,8 +437,8 @@ export default function AddYourLightFlow({
             )}
 
             <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.06] flex items-center gap-2.5 text-xs text-[#8993A7]">
-              <ShieldCheck className="w-4 h-4 text-[#7DD3FC] shrink-0" />
-              <span>Simulated demo flow. No real billing info or payment required.</span>
+              <QrCode className="w-4 h-4 text-[#FFC857] shrink-0" />
+              <span>Payments processed via direct UPI QR with manual administrative verification.</span>
             </div>
 
             <div className="pt-3 flex justify-end">
@@ -748,6 +712,13 @@ export default function AddYourLightFlow({
               </div>
             </div>
 
+            {submissionError && (
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-400 flex items-center gap-2 font-mono">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{submissionError}</span>
+              </div>
+            )}
+
             <div className="pt-2 flex justify-between items-center shrink-0">
               <button
                 type="button"
@@ -761,146 +732,244 @@ export default function AddYourLightFlow({
               <button
                 type="button"
                 id="btn-continue-step-3"
-                onClick={() => setStep(4)}
-                className="btn-gold px-7 py-3 rounded-full text-xs uppercase tracking-widest font-semibold flex items-center gap-2 cursor-pointer shadow-lg"
+                disabled={isGeneratingIntent}
+                onClick={initializeUpiCheckout}
+                className="btn-gold px-7 py-3 rounded-full text-xs uppercase tracking-widest font-semibold flex items-center gap-2 cursor-pointer shadow-lg disabled:opacity-50"
               >
-                <span>REVIEW YOUR LIGHT</span>
+                <span>{isGeneratingIntent ? 'GENERATING UPI QR...' : 'PROCEED TO CHECKOUT'}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
         )}
 
-        {/* ================= STEP 4: REVIEW & CONFIRMATION ================= */}
+        {/* ================= STEP 4: UPI QR CHECKOUT & MANUAL VERIFICATION ================= */}
         {step === 4 && (
           <div className="space-y-4 animate-in fade-in flex-1 overflow-y-auto pr-1">
-            <div>
-              <h2 id={titleId} className="text-xl sm:text-2xl font-light text-[#F5F7FA] tracking-tight mb-1">
-                YOUR LIGHT IS READY
-              </h2>
-              <p className="text-xs sm:text-sm text-[#8993A7] font-light">
-                Ready to ignite your light on Earth. Review your details below.
-              </p>
-            </div>
+            {isVerificationSubmitted ? (
+              /* Screen 4B: Verification Request Submitted */
+              <div className="space-y-4 py-4 text-center">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 mx-auto flex items-center justify-center text-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+                  <Clock className="w-8 h-8" />
+                </div>
 
-            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
-                <span className="text-xs text-[#8993A7] font-mono uppercase">Amount</span>
-                <span className="text-base font-mono font-bold text-[#FFC857]">
-                  ₹{currentAmount.toLocaleString()}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
-                <span className="text-xs text-[#8993A7] font-mono uppercase">Location</span>
-                <span className="text-xs text-[#F5F7FA] font-medium flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-[#7DD3FC]" />
-                  <span>{locationLabel}</span>
-                  <span className="text-[10px] font-mono text-[#8993A7]">
-                    ({isApproximate ? 'approximate' : 'precise'})
-                  </span>
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
-                <span className="text-xs text-[#8993A7] font-mono uppercase">Contributor</span>
-                <span className="text-xs text-[#F5F7FA] font-medium">
-                  {isAnonymous ? 'Anonymous' : (name.trim() || 'A Kind Soul')}
-                </span>
-              </div>
-
-              {message && (
-                <div>
-                  <span className="text-[10px] text-[#8993A7] font-mono uppercase block mb-1">
-                    Dedication
-                  </span>
-                  <p className="text-xs text-[#F5F7FA]/90 italic font-light">
-                    &ldquo;{message}&rdquo;
+                <div className="space-y-1">
+                  <h2 className="text-xl sm:text-2xl font-light text-[#F5F7FA] tracking-tight">
+                    VERIFICATION REQUEST SUBMITTED
+                  </h2>
+                  <p className="text-xs text-[#8993A7] font-mono">
+                    Order Reference: <span className="text-[#FFC857]">{orderData?.orderId}</span>
                   </p>
                 </div>
-              )}
-            </div>
 
-            {/* Submission Error Alert */}
-            {submissionError && (
-              <div className="p-3.5 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-start gap-2.5 text-xs text-red-400">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-400" />
-                <span>{submissionError}</span>
-              </div>
-            )}
+                <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 text-left space-y-2 text-xs font-mono">
+                  <div className="flex justify-between py-1 border-b border-white/[0.06]">
+                    <span className="text-[#8993A7]">Contribution Amount:</span>
+                    <span className="text-[#FFC857] font-bold">₹{orderData?.amount.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-white/[0.06]">
+                    <span className="text-[#8993A7]">Claimed Transaction ID:</span>
+                    <span className="text-[#7DD3FC]">{claimedUtr || 'None provided'}</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="text-[#8993A7]">Review Status:</span>
+                    <span className="text-amber-300 font-semibold uppercase">Pending Manual Review</span>
+                  </div>
+                </div>
 
-            {/* Clear Mode Disclosure Notice */}
-            {isProduction ? (
-              <div className="p-3.5 rounded-2xl bg-[#7DD3FC]/10 border border-[#7DD3FC]/30 flex items-start gap-3 text-xs text-[#7DD3FC]">
-                <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-semibold uppercase tracking-wider block mb-1 font-mono text-[11px]">
-                    TEST MODE (SANDBOX) — RAZORPAY TEST CHECKOUT ACTIVE
-                  </span>
-                  <span className="text-[11px] text-[#F5F7FA]/80 leading-relaxed block">
-                    A test checkout window will open. No real money will be charged. Use Razorpay test credentials to simulate payment.
-                  </span>
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300/90 leading-relaxed text-left">
+                  <span className="font-semibold block mb-1">What happens next?</span>
+                  Our operator will independently verify this payment against official bank account records. Once confirmed, your beacon will be activated and permanently ignite on the global monument.
+                </div>
+
+                <div className="pt-2 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="btn-gold px-8 py-3 rounded-full text-xs font-semibold uppercase tracking-widest cursor-pointer shadow-lg"
+                  >
+                    <span>DONE & RETURN TO GLOBE</span>
+                  </button>
                 </div>
               </div>
             ) : (
-              <div className="p-3.5 rounded-2xl bg-[#FFC857]/10 border border-[#FFC857]/30 flex items-start gap-3 text-xs text-[#FFC857]">
-                <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
+              /* Screen 4A: Active UPI QR Payment Checkout */
+              <div className="space-y-4">
                 <div>
-                  <span className="font-semibold uppercase tracking-wider block mb-1 font-mono text-[11px]">
-                    DEMO MODE — NO PAYMENT WILL BE CHARGED. THIS CONTRIBUTION IS NOT SAVED PERMANENTLY.
+                  <h2 id={titleId} className="text-xl sm:text-2xl font-light text-[#F5F7FA] tracking-tight mb-1">
+                    PAY VIA UPI QR
+                  </h2>
+                  <p className="text-xs text-[#8993A7] font-light">
+                    Scan with any UPI app (Google Pay, PhonePe, Paytm, BHIM, or your bank app).
+                  </p>
+                </div>
+
+                {/* Demo Mode / Unconfigured Warning Notice */}
+                {(!isProduction || orderData?.isDemo || !orderData?.isConfigured) && (
+                  <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5 text-xs text-amber-300">
+                    <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
+                    <div>
+                      <span className="font-bold uppercase tracking-wider block font-mono text-[10px]">
+                        DEMO MODE — DEMO UPI QR (NON-PAYABLE)
+                      </span>
+                      <span className="text-[11px] text-white/80 block leading-tight">
+                        No real money will be charged. This is a simulated checkout prototype. Submitting verification records a review request for testing.
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* QR Code and Payment Details Container */}
+                <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col items-center gap-3">
+                  {qrCodeDataUrl ? (
+                    <div className="relative p-2.5 rounded-2xl bg-white shadow-2xl border-2 border-[#FFC857]/50">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={qrCodeDataUrl}
+                        alt="UPI Payment QR Code"
+                        className="w-44 h-44 sm:w-48 sm:h-48 object-contain rounded-lg"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-48 h-48 rounded-2xl bg-white/5 border border-dashed border-white/20 flex items-center justify-center text-xs text-[#8993A7]">
+                      Loading QR...
+                    </div>
+                  )}
+
+                  {/* Payment Metadata Grid */}
+                  <div className="w-full space-y-2 text-xs font-mono pt-1">
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+                      <span className="text-[#8993A7]">Payee:</span>
+                      <div className="flex items-center gap-1.5 font-medium text-[#F5F7FA]">
+                        <span>{orderData?.payeeName} ({orderData?.payeeVpa})</span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyText(orderData?.payeeVpa || '', 'vpa')}
+                          className="text-[#8993A7] hover:text-[#FFC857] cursor-pointer"
+                          title="Copy UPI ID"
+                        >
+                          {copiedField === 'vpa' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+                      <span className="text-[#8993A7]">Exact Amount:</span>
+                      <span className="text-sm font-bold text-[#FFC857]">
+                        ₹{orderData?.amount.toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+                      <span className="text-[#8993A7]">Order Reference:</span>
+                      <div className="flex items-center gap-1.5 font-medium text-[#7DD3FC]">
+                        <span className="truncate max-w-[160px]">{orderData?.orderId}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyText(orderData?.orderId || '', 'orderId')}
+                          className="text-[#8993A7] hover:text-[#FFC857] cursor-pointer"
+                          title="Copy Order ID"
+                        >
+                          {copiedField === 'orderId' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Direct UPI Intent Link for Mobile Visitors */}
+                    {orderData?.upiUri && (
+                      <a
+                        href={orderData.upiUri}
+                        className="w-full py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-mono text-center text-[#7DD3FC] flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-white/10"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Tap to open in UPI App</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                {/* Manual Verification Disclosure Alert */}
+                <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-[11px] text-[#8993A7] leading-relaxed">
+                  <span className="font-semibold text-white/90 block mb-0.5 font-mono uppercase text-[10px]">
+                    Manual Verification Notice
                   </span>
-                  <span className="text-[11px] text-[#F5F7FA]/80 leading-relaxed block">
-                    Clicking confirm will ignite a glowing golden beacon on the 3D globe and fly the camera to your location.
+                  WorldBeacon uses manual verification. Paying via QR submits your order for review. An administrator verifies the transaction against bank statement records before activating the light.
+                </div>
+
+                {/* Untrusted Transaction ID / UTR input */}
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider text-[#8993A7] font-mono mb-1">
+                    UPI Transaction ID / UTR (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    id="input-claimed-utr"
+                    placeholder="e.g. 12-digit UTR from your payment receipt"
+                    value={claimedUtr}
+                    onChange={(e) => setClaimedUtr(e.target.value)}
+                    maxLength={40}
+                    className="w-full py-2 px-3 rounded-xl bg-white/[0.04] text-[#F5F7FA] border border-white/10 text-xs font-mono focus:outline-none focus:border-[#FFC857]"
+                  />
+                  <span className="text-[10px] text-[#8993A7] font-mono mt-0.5 block">
+                    Providing your UTR speeds up reconciliation against bank statements.
                   </span>
+                </div>
+
+                {submissionError && (
+                  <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-400 flex items-center gap-2 font-mono">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{submissionError}</span>
+                  </div>
+                )}
+
+                {/* Accessible Trust & Payment Support Links */}
+                <div className="flex items-center justify-between text-[11px] font-mono text-[#8993A7] px-1">
+                  <span>Need payment assistance?</span>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href="/contribution-policy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-[#FFC857] underline transition-colors"
+                    >
+                      Contribution Policy
+                    </a>
+                    <span>•</span>
+                    <a
+                      href="/payment-support"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-[#FFC857] underline transition-colors"
+                    >
+                      Payment Support
+                    </a>
+                  </div>
+                </div>
+
+                {/* Bottom Action Buttons */}
+                <div className="pt-2 flex justify-between items-center shrink-0">
+                  <button
+                    type="button"
+                    id="btn-back-step-4"
+                    onClick={() => setStep(3)}
+                    className="px-4 py-2 text-xs text-[#8993A7] hover:text-[#F5F7FA] flex items-center gap-1.5 cursor-pointer font-mono"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>BACK</span>
+                  </button>
+                  <button
+                    type="button"
+                    id="btn-confirm-ignition"
+                    disabled={isSubmittingVerification}
+                    onClick={handleSubmitVerification}
+                    className="btn-gold px-7 py-3 rounded-full text-xs font-semibold uppercase tracking-widest flex items-center gap-2 cursor-pointer shadow-2xl disabled:opacity-50"
+                  >
+                    <Sparkles className="w-4 h-4 text-[#030407]" />
+                    <span>{isSubmittingVerification ? 'SUBMITTING...' : "I'VE PAID — SUBMIT"}</span>
+                  </button>
                 </div>
               </div>
             )}
-
-            {/* Accessible Trust & Payment Support Links */}
-            <div className="flex items-center justify-between text-[11px] font-mono text-[#8993A7] px-1">
-              <span>Need billing assistance?</span>
-              <div className="flex items-center gap-2">
-                <a
-                  href="/contribution-policy"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-[#FFC857] underline transition-colors"
-                >
-                  Contribution Policy
-                </a>
-                <span>•</span>
-                <a
-                  href="/payment-support"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-[#FFC857] underline transition-colors"
-                >
-                  Payment Support
-                </a>
-              </div>
-            </div>
-
-            <div className="pt-2 flex justify-between items-center shrink-0">
-              <button
-                type="button"
-                id="btn-back-step-4"
-                onClick={() => setStep(3)}
-                className="px-4 py-2 text-xs text-[#8993A7] hover:text-[#F5F7FA] flex items-center gap-1.5 cursor-pointer font-mono"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>BACK</span>
-              </button>
-              <button
-                type="button"
-                id="btn-confirm-ignition"
-                disabled={isSubmitting}
-                onClick={handleComplete}
-                className="btn-gold px-7 py-3 rounded-full text-xs font-semibold uppercase tracking-widest flex items-center gap-2 cursor-pointer shadow-2xl"
-              >
-                <Sparkles className="w-4 h-4 text-[#030407]" />
-                <span>IGNITE MY LIGHT ✦</span>
-              </button>
-            </div>
           </div>
         )}
       </div>

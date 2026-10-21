@@ -49,7 +49,16 @@ export function isProductionMode(): boolean {
  * Checks whether the server environment has real payment gateway secrets configured.
  */
 export function isPaymentConfigured(): boolean {
-  const provider = process.env.PAYMENT_PROVIDER || 'razorpay';
+  const provider = process.env.PAYMENT_PROVIDER || 'upi_qr';
+  if (provider === 'upi_qr') {
+    const vpa = process.env.UPI_PAYEE_VPA || process.env.NEXT_PUBLIC_UPI_PAYEE_VPA;
+    return !!(
+      vpa &&
+      vpa.includes('@') &&
+      !vpa.toLowerCase().includes('demo') &&
+      !vpa.toLowerCase().includes('placeholder')
+    );
+  }
   if (provider === 'razorpay') {
     return !!(
       process.env.RAZORPAY_KEY_ID &&

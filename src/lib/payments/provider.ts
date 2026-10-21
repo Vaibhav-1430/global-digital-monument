@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { PaymentOrderIntent } from './types';
 import { SanitizedContribution } from '../validation/contribution';
 import { isPaymentConfigured } from '@/config/appMode';
@@ -5,9 +6,10 @@ import {
   assertCommercialLaunchReadiness,
   isCommercialLaunchRequested,
 } from '@/config/businessInfo';
+import { getUpiConfig, buildUpiPaymentUri } from '@/config/upi';
 
 /**
- * Creates a payment order intent with the configured provider (Razorpay / Stripe).
+ * Creates a payment order intent with the configured provider (UPI QR / Razorpay / Stripe).
  *
  * If credentials are missing in the environment, returns an unconfigured status
  * without pretending a payment was initialized.
@@ -16,10 +18,46 @@ export async function createPaymentOrder(
   contribution: SanitizedContribution,
   donorEmail?: string
 ): Promise<PaymentOrderIntent> {
-  const provider = (process.env.PAYMENT_PROVIDER || 'razorpay') as 'razorpay' | 'stripe';
+  const provider = (process.env.PAYMENT_PROVIDER || 'upi_qr') as 'upi_qr' | 'razorpay' | 'stripe';
   const hasSecrets = isPaymentConfigured();
 
-  // If real provider secrets are not provided, return unconfigured status with clear instructions
+  // 1. UPI QR Order Creation (Primary Indian Rupee Payment Flow)
+  if (provider === 'upi_qr') {
+    const upiConfig = getUpiConfig();
+    const orderRef = `order_upi_${Date.now()}_${randomBytes(4).toString('hex')}`;
+
+    // Safety guard: Commercial live launch requires owner confirmation of operator and legal identity
+    if (isCommercialLaunchRequested()) {
+      assertCommercialLaunchReadiness();
+    }
+
+    const upiUri = buildUpiPaymentUri({
+      payeeVpa: upiConfig.payeeVpa,
+      payeeName: upiConfig.payeeName,
+      amount: contribution.amount,
+      orderRef,
+      note: `WorldBeacon Light ${orderRef.slice(0, 16)}`,
+      merchantCode: upiConfig.merchantCode,
+    });
+
+    return {
+      orderId: orderRef,
+      amount: contribution.amount,
+      currency: 'INR',
+      provider: 'upi_qr',
+      isConfigured: upiConfig.isConfigured,
+      payeeVpa: upiConfig.payeeVpa,
+      payeeName: upiConfig.payeeName,
+      upiUri,
+      message: upiConfig.isConfigured
+        ? undefined
+        : 'UPI payment destination is currently unconfigured. Running in safe demonstration mode.',
+      verificationNotice:
+        'This payment requires manual verification. Your beacon will light up on the globe once your payment is reviewed and verified against bank records.',
+    };
+  }
+
+  // If real provider secrets are not provided for Razorpay/Stripe, return unconfigured status with clear instructions
   if (!hasSecrets) {
     const reference = `sim_order_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     return {
